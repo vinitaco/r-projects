@@ -1,0 +1,91 @@
+## Chapitre 3 devoirs
+
+rm(list = ls())
+
+r <- 5
+q <- 1/5
+
+a <- 2
+lambda <- 1/5000
+
+
+## 1)
+
+## a) E(X) = E(B)*E(M)
+
+meanm <- r*(1-q)/q
+meanb <- a/lambda
+meanx <- meanb*meanm
+
+## b) Var(X) = Var(B) * E(M) + Var(M) * E(B)^2
+
+varm <- meanm/q
+varb <- meanb/lambda
+varx <- varb * meanm + varm * meanb^2
+
+## c) Trouver Fx(x), puis après évaluer à 500 000
+
+Fx <- function(x)
+{
+    sapply(seq_len(length(x)), function(j)
+    dnbinom(0, r, q) +
+    sum(sapply(1:1000, function(k) pgamma(x[j], a*k, lambda)*dnbinom(k, r, q))))
+}
+
+## d) Pi de 0.99: TVaR de 0.99
+
+## La VaR: 
+
+VaRX <- function(k)
+{
+    zero <- dnbinom(0, r, q)
+    for(i in seq_len(length(k)))
+    {
+        if(k[i] <= zero)
+            k[i] <- 0
+        else
+            k[i] <- uniroot(function(x) Fx(x)-k[i], lower = -1e8, upper = 1e8)[[1]]
+    }
+k
+}
+
+
+
+## TVaR: 
+TVaRX <- function(k)
+{
+    c <- VaRX(k)
+    sapply(seq_len(length(k)), function(j)
+    ((sum(sapply(1:1000, function(i)
+        (a*i/lambda) * (1-pgamma(c[j], a*i+1, lambda)) * dnbinom(i, r, q))))
+    + c[j]*(Fx(c[j])-k[j])) / (1-k[j]))
+    
+}
+
+
+## e) pi 1, pi 2, pi 3
+
+pi_2 <- function(k) (varb*meanm / varx) * (TVaRX(k)-meanx)
+
+pi_3 <- function(k) ((varm * meanb^2) / varx ) * (TVaRX(k)-meanx)
+
+
+## Réponses
+
+## a) 
+
+data.frame(meanb, meanm, meanx)
+     
+## b)   
+
+data.frame(varb, varm, varx)
+
+## c)
+
+Fx(500000)
+
+## d), e)
+
+TVaRX(0.99)
+
+data.frame(meanx, pi_2(0.99), pi_3(0.99))
